@@ -1,4 +1,5 @@
 import tkinter as tk
+import os
 from tkinter import ttk, messagebox, scrolledtext
 import threading
 from diagnostic import DiagnosticEngine
@@ -11,6 +12,15 @@ class AppUI:
         self.root.title("DiagPcNet - Diagnostic & Réparation Partage Windows")
         self.root.geometry("800x600")
         self.root.minsize(600, 400)
+        
+        # Icône de l'application
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), "assets", "icon.png")
+            if os.path.exists(icon_path):
+                self.icon_img = tk.PhotoImage(file=icon_path)
+                self.root.iconphoto(False, self.icon_img)
+        except Exception as e:
+            logger.warning(f"Impossible de charger l'icône : {e}")
         
         self.diag_engine = DiagnosticEngine()
         self.repair_engine = RepairEngine(self.append_log)

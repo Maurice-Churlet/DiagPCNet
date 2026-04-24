@@ -1,4 +1,7 @@
 # DiagPcNet - Windows Network Sharing Repair Tool
+<p align="center">
+  <img src="assets/logo.png" width="200" alt="DiagPcNet Logo">
+</p>
 
 Outil de diagnostic et réparation automatique des problèmes de partage réseau sous Windows 10/11.
 
