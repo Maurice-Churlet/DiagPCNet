@@ -1,3 +1,7 @@
+# Copyright (C) 2026 Maurice
+# This program is free software under the GNU GPL v3 license.
+# See the LICENSE file for details.
+
 import tkinter as tk
 from ui import AppUI
 from utils import is_admin, run_as_admin, logger
