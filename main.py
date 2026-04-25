@@ -19,12 +19,22 @@ def hide_console():
         pass
 
 def main():
+    # Activer la conscience DPI (Haute résolution)
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except:
+        try: ctypes.windll.user32.SetProcessDPIAware()
+        except: pass
+
     hide_console()
     # Vérification des droits administrateur
     if not is_admin():
         logger.warning("Droits admin non détectés. Tentative de relance...")
-        run_as_admin()
-        sys.exit()
+        logger.debug(f"Executable: {sys.executable} | Script: {sys.argv[0]}")
+        if run_as_admin():
+            sys.exit()   # Relance réussie → on ferme ce process non-admin
+        else:
+            logger.warning("Relance admin échouée. Démarrage en mode dégradé (certaines fonctions peuvent être limitées).")
 
     logger.info("Démarrage de l'application DiagPcNet")
     

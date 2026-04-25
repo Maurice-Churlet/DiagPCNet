@@ -16,7 +16,23 @@ def is_admin():
         return False
 
 def run_as_admin():
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    """Relance le script courant avec les droits administrateur via UAC."""
+    script = os.path.abspath(sys.argv[0])
+    # Arguments supplémentaires entre guillemets
+    params = " ".join(f'"{a}"' for a in sys.argv[1:]) if len(sys.argv) > 1 else ""
+    full_params = f'"{script}" {params}'.strip()
+    ret = ctypes.windll.shell32.ShellExecuteW(
+        None,                       # hwnd
+        "runas",                    # verbe UAC
+        sys.executable,             # python.exe
+        full_params,                # "script.py" [args...]
+        os.path.dirname(script),    # répertoire de travail
+        1                           # SW_SHOWNORMAL
+    )
+    if ret <= 32:
+        logger.error(f"Échec de la relance admin (ShellExecuteW code={ret}).")
+        return False
+    return True
 
 def run_command(cmd, timeout=30, shell=True):
     """Exécute une commande système avec timeout et capture de sortie."""

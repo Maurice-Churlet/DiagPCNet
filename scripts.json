@@ -1,0 +1,26 @@
+[
+    {
+        "title": "Mise à jour Winget",
+        "command": "winget upgrade --all",
+        "mode": "PowerShell",
+        "pause": true
+    },
+    {
+        "title": "Lister IP",
+        "command": "ipconfig /all",
+        "mode": "PowerShell",
+        "pause": true
+    },
+    {
+        "title": "Copier Email",
+        "command": "mon.email@exemple.com",
+        "mode": "Copie",
+        "pause": false
+    },
+    {
+        "title": "Git signé",
+        "command": "git add .\ngit commit -S - m \"\"",
+        "mode": "Copie",
+        "pause": true
+    }
+]
