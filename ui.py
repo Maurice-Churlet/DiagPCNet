@@ -22,7 +22,7 @@ import ctypes
 import ctypes.wintypes
 import psutil
 import time
-from PIL import Image
+from PIL import Image, ImageTk
 import pystray
 from pystray import MenuItem as item
 
@@ -133,11 +133,19 @@ class AppUI:
         self.lbl_status = ttk.Label(bottom_frame, textvariable=self.status_var, style="Status.TLabel")
         self.lbl_status.pack(side=tk.LEFT)
 
+        # Message Café
+        self.coffee_var = tk.StringVar(value="")
+        self.lbl_coffee = ttk.Label(bottom_frame, textvariable=self.coffee_var, cursor="hand2", foreground="#1a73e8", font=("Segoe UI", 9, "italic", "bold"))
+        self.lbl_coffee.pack(side=tk.LEFT, expand=True)
+        self.lbl_coffee.bind("<Button-1>", lambda e: self.show_coffee_window())
+
         self.cpu_ram_var = tk.StringVar(value="CPU: --% | RAM: --%")
         ttk.Label(bottom_frame, textvariable=self.cpu_ram_var, font=("Consolas", 9)).pack(side=tk.LEFT, padx=50)
 
         self.progress = ttk.Progressbar(bottom_frame, mode='indeterminate', length=200)
         self.progress.pack(side=tk.RIGHT, padx=10)
+        
+        self.cycle_coffee_message()
 
     def create_tabs(self):
         # Définir tous les onglets possibles
@@ -810,6 +818,52 @@ class AppUI:
                     pass
                 time.sleep(2)
         threading.Thread(target=monitor_loop, daemon=True).start()
+
+    # --- Système Café (Dons) ---
+    def cycle_coffee_message(self):
+        try:
+            if os.path.exists("coffee.md"):
+                with open("coffee.md", "r", encoding="utf-8") as f:
+                    lines = [line.strip() for line in f if line.strip()]
+                import random
+                if lines:
+                    self.coffee_var.set(random.choice(lines))
+        except Exception as e:
+            logger.warning(f"Erreur chargement messages café: {e}")
+        self.root.after(60000, self.cycle_coffee_message)
+
+    def show_coffee_window(self):
+        top = tk.Toplevel(self.root)
+        top.title("Merci !")
+        
+        # Centrage de la fenêtre
+        w = 400
+        h = 450
+        x = (self.root.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.root.winfo_screenheight() // 2) - (h // 2)
+        top.geometry(f"{w}x{h}+{x}+{y}")
+        
+        top.resizable(False, False)
+        top.transient(self.root)
+        top.grab_set()
+
+        ttk.Label(top, text="Merci de soutenir mes développements", font=("Segoe UI", 12, "bold")).pack(pady=(20, 5))
+        ttk.Label(top, text="Pour le prix d'un café ou plus selon votre karma\n(uniquement en BTC)", justify=tk.CENTER).pack(pady=(0, 20))
+
+        try:
+            if os.path.exists("QR_BTC.jpg"):
+                img = Image.open("QR_BTC.jpg")
+                img = img.resize((200, 200), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                lbl_img = ttk.Label(top, image=photo)
+                lbl_img.image = photo
+                lbl_img.pack(pady=10)
+            else:
+                ttk.Label(top, text="QR Code introuvable (QR_BTC.jpg manquant)").pack(pady=10)
+        except Exception as e:
+            ttk.Label(top, text="Impossible d'afficher le QR Code.").pack(pady=10)
+
+        ttk.Button(top, text="Fermer", command=top.destroy).pack(pady=20)
 
     # --- Actions Maintenance ---
     def create_maint_tab(self):
