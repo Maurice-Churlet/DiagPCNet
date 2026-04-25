@@ -30,7 +30,8 @@ def run_command(cmd, timeout=30, shell=True):
             timeout=timeout, 
             shell=shell,
             encoding='cp850',
-            errors='replace'
+            errors='replace',
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
         return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:

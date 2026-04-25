@@ -7,7 +7,19 @@ from ui import AppUI
 from utils import is_admin, run_as_admin, logger
 import sys
 
+import ctypes
+
+def hide_console():
+    """Cache la fenêtre de console si elle est présente."""
+    try:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 0)
+    except:
+        pass
+
 def main():
+    hide_console()
     # Vérification des droits administrateur
     if not is_admin():
         logger.warning("Droits admin non détectés. Tentative de relance...")
