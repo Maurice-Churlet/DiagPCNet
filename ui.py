@@ -717,24 +717,42 @@ class AppUI:
         self.git_search_var.trace_add("write", lambda *args: self.filter_git_tree())
         ttk.Entry(search_frame, textvariable=self.git_search_var, width=30).pack(side=tk.LEFT, padx=5)
 
+        # Raccourci pour Crédits GitHub
+        credits_frame = ttk.Frame(search_frame)
+        credits_frame.pack(side=tk.RIGHT, padx=20)
+        
+        import webbrowser
+        btn_billing = ttk.Button(
+            credits_frame, 
+            text="💳 Vérifier conso Copilot (Web)", 
+            command=lambda: webbrowser.open("https://github.com/settings/billing")
+        )
+        btn_billing.pack()
+
         # Treeview
         table_frame = ttk.Frame(self.tab_git)
         table_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
-        cols = ("name", "branch", "status", "sync", "last_commit")
+        cols = ("name", "branch", "status", "sync", "author", "commits", "tag", "last_commit")
         self.git_tree = ttk.Treeview(table_frame, columns=cols, show="headings")
         
         self.git_tree.heading("name", text="Dépôt")
         self.git_tree.heading("branch", text="Branche")
         self.git_tree.heading("status", text="Statut Local")
         self.git_tree.heading("sync", text="Synchro")
-        self.git_tree.heading("last_commit", text="Activité")
+        self.git_tree.heading("author", text="Auteur")
+        self.git_tree.heading("commits", text="Commits")
+        self.git_tree.heading("tag", text="Tag")
+        self.git_tree.heading("last_commit", text="Dernière Activité")
 
         self.git_tree.column("name", width=150)
         self.git_tree.column("branch", width=100)
         self.git_tree.column("status", width=100)
         self.git_tree.column("sync", width=120)
-        self.git_tree.column("last_commit", width=150)
+        self.git_tree.column("author", width=120)
+        self.git_tree.column("commits", width=70, anchor=tk.E)
+        self.git_tree.column("tag", width=80, anchor=tk.CENTER)
+        self.git_tree.column("last_commit", width=120)
 
         sb = ttk.Scrollbar(table_frame, orient="vertical", command=self.git_tree.yview)
         self.git_tree.configure(yscrollcommand=sb.set)
@@ -773,9 +791,11 @@ class AppUI:
         query = self.git_search_var.get().lower()
         self.git_tree.delete(*self.git_tree.get_children())
         for r in self.all_repos:
-            if query in r["name"].lower() or query in r["remote"].lower() or query in r["branch"].lower():
+            if query in r["name"].lower() or query in r.get("remote", "").lower() or query in r["branch"].lower() or query in r.get("author", "").lower():
                 self.git_tree.insert("", "end", values=(
-                    r["name"], r["branch"], r["status"], r["sync"], r["last_commit"]
+                    r["name"], r["branch"], r["status"], r["sync"], 
+                    r.get("author", ""), r.get("total_commits", ""), 
+                    r.get("latest_tag", ""), r["last_commit"]
                 ))
 
     # --- Actions Monitoring ---

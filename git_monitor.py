@@ -71,6 +71,17 @@ class GitMonitorEngine:
                     else:
                         sync_status = f"⇅ Diverged (+{ahead}, -{behind})"
 
+        # Auteur du dernier commit
+        last_author = self.run_git(path, ["log", "-1", "--format=%an"])
+        
+        # Nombre total de commits
+        total_commits = self.run_git(path, ["rev-list", "--count", "HEAD"])
+        
+        # Dernier tag
+        latest_tag = self.run_git(path, ["describe", "--tags", "--abbrev=0"])
+        if not latest_tag:
+            latest_tag = "Aucun"
+
         return {
             "name": name,
             "path": path,
@@ -78,6 +89,9 @@ class GitMonitorEngine:
             "status": status,
             "sync": sync_status,
             "last_commit": last_commit,
+            "author": last_author,
+            "total_commits": total_commits,
+            "latest_tag": latest_tag,
             "remote": remote
         }
 
