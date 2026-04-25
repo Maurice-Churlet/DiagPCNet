@@ -106,12 +106,18 @@ class AppUI:
         
         style.configure("Action.TButton", padding=10, font=("Segoe UI", 10, "bold"))
         style.configure("Repair.TButton", padding=10, font=("Segoe UI", 10, "bold"), foreground="white", background="#d93025")
+        
+        style.configure("Storage.Treeview", font=("Segoe UI", 11), rowheight=28)
+        style.configure("Storage.Treeview.Heading", font=("Segoe UI", 11, "bold"))
 
     def create_widgets(self):
         # Notebook (Onglets)
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
+        # Log Area - Initialisation préventive avant de créer les onglets
+        self.log_area = None
+        
         self.create_tabs()
 
         # Restaurer l'onglet précédent
@@ -133,16 +139,6 @@ class AppUI:
         self.progress = ttk.Progressbar(bottom_frame, mode='indeterminate', length=200)
         self.progress.pack(side=tk.RIGHT, padx=10)
 
-        # Log Area (always visible at bottom or in a separate expandable frame?)
-        # Let's put it in a separate frame
-        log_frame = ttk.LabelFrame(self.root, text="Journaux d'opérations", padding="5")
-        log_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=(0, 10))
-        
-        self.log_area = scrolledtext.ScrolledText(log_frame, height=8, font=("Consolas", 9), bg="#1e1e1e", fg="#d4d4d4")
-        self.log_area.pack(fill=tk.BOTH, expand=True)
-        
-        self.append_log("Application démarrée.")
-
     def create_tabs(self):
         # Définir tous les onglets possibles
         self.tab_definitions = {
@@ -161,14 +157,21 @@ class AppUI:
 
         # Charger l'ordre depuis la config ou utiliser l'ordre par défaut
         default_order = list(self.tab_definitions.keys())
-        order = getattr(self, 'saved_tab_order', default_order)
+        saved_order = getattr(self, 'saved_tab_order', [])
         
-        # S'assurer que tous les onglets sont présents
+        # S'assurer de ne pas avoir de doublons et que tous les onglets sont valides
+        order = []
+        for t in saved_order:
+            if t in default_order and t not in order:
+                order.append(t)
         for t in default_order:
-            if t not in order: order.append(t)
+            if t not in order:
+                order.append(t)
 
         for name in order:
             if name in self.tab_definitions:
+                if name in self.tab_frames: continue # Sécurité doublon
+                
                 frame = ttk.Frame(self.notebook, padding="20")
                 self.notebook.add(frame, text=name)
                 self.tab_frames[name] = frame
@@ -327,6 +330,16 @@ class AppUI:
         self.btn_repair.pack(side=tk.LEFT, padx=10)
         self.btn_repair.state(['disabled'])
 
+        # Console de log intégrée à l'onglet (agrandie jusqu'en dessous des boutons)
+        log_frame = ttk.LabelFrame(self.tab_network, text="Journaux d'opérations", padding="5")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        self.log_area = scrolledtext.ScrolledText(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4")
+        self.log_area.pack(fill=tk.BOTH, expand=True)
+        
+        # Message de démarrage (déplacé ici car log_area est maintenant prêt)
+        self.append_log("Application démarrée. Prêt pour l'analyse.")
+
     def create_storage_tab(self):
         h_frame = ttk.Frame(self.tab_storage)
         h_frame.pack(fill=tk.X, pady=(0, 20))
@@ -353,21 +366,41 @@ class AppUI:
         self.btn_benchmark = ttk.Button(btn_frame, text="🚀 LANCER LE BENCHMARK", style="Action.TButton", command=self.start_benchmark)
         self.btn_benchmark.pack()
 
-        # Results area
-        self.bench_results_frame = ttk.LabelFrame(self.tab_storage, text="Résultats du Test", padding="10")
-        self.bench_results_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-
-        self.lbl_bench_write = ttk.Label(self.bench_results_frame, text="Écriture : -- MB/s", font=("Segoe UI", 12))
-        self.lbl_bench_write.pack(pady=5)
+        # Results history (Treeview)
+        hist_frame = ttk.Frame(self.tab_storage)
+        hist_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        self.lbl_bench_read = ttk.Label(self.bench_results_frame, text="Lecture : -- MB/s", font=("Segoe UI", 12))
-        self.lbl_bench_read.pack(pady=5)
-
-        self.lbl_bench_comp = ttk.Label(self.bench_results_frame, text="Catégorie détectée : --", font=("Segoe UI", 11, "bold"), foreground="#1a73e8")
-        self.lbl_bench_comp.pack(pady=(10, 5))
-
-        self.lbl_bench_desc = ttk.Label(self.bench_results_frame, text="", wraplength=600, font=("Segoe UI", 10, "italic"), justify=tk.CENTER)
-        self.lbl_bench_desc.pack(pady=5)
+        ttk.Label(hist_frame, text="Historique des tests (50 max)", font=("Segoe UI", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
+        
+        cols = ("date", "lecteur", "modele", "media", "bus", "read", "write", "cat")
+        self.bench_tree = ttk.Treeview(hist_frame, columns=cols, show="headings", height=8, style="Storage.Treeview")
+        self.bench_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        sb = ttk.Scrollbar(hist_frame, orient=tk.VERTICAL, command=self.bench_tree.yview)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.bench_tree.configure(yscrollcommand=sb.set)
+        
+        self.bench_tree.heading("date", text="Date", command=lambda: self.sort_bench_tree("date", False))
+        self.bench_tree.heading("lecteur", text="Lecteur", command=lambda: self.sort_bench_tree("lecteur", False))
+        self.bench_tree.heading("modele", text="Modèle", command=lambda: self.sort_bench_tree("modele", False))
+        self.bench_tree.heading("media", text="Type", command=lambda: self.sort_bench_tree("media", False))
+        self.bench_tree.heading("bus", text="Bus", command=lambda: self.sort_bench_tree("bus", False))
+        self.bench_tree.heading("read", text="Lecture (MB/s)", command=lambda: self.sort_bench_tree("read", False))
+        self.bench_tree.heading("write", text="Écriture (MB/s)", command=lambda: self.sort_bench_tree("write", False))
+        self.bench_tree.heading("cat", text="Catégorie", command=lambda: self.sort_bench_tree("cat", False))
+        
+        self.bench_tree.column("date", width=150)
+        self.bench_tree.column("lecteur", width=80, anchor=tk.CENTER)
+        self.bench_tree.column("modele", width=200, anchor=tk.W)
+        self.bench_tree.column("media", width=80, anchor=tk.CENTER)
+        self.bench_tree.column("bus", width=80, anchor=tk.CENTER)
+        self.bench_tree.column("read", width=110, anchor=tk.E)
+        self.bench_tree.column("write", width=110, anchor=tk.E)
+        self.bench_tree.column("cat", width=180, anchor=tk.W)
+        
+        self.bench_tree.bind("<Button-3>", self.show_bench_context_menu)
+        
+        self.refresh_bench_history_ui()
 
         # Chargement asynchrone des disques au démarrage
         self.drive_combo['values'] = ["Chargement des lecteurs..."]
@@ -395,10 +428,35 @@ class AppUI:
 
     # --- Actions Network ---
     def append_log(self, message):
-        self.log_area.insert(tk.END, f"[{threading.current_thread().name}] {message}\n")
-        self.log_area.see(tk.END)
+        """Ajoute un message aux logs de manière thread-safe."""
+        if not self.log_area:
+            return
+            
+        thread_name = threading.current_thread().name
+        try:
+            # Utiliser after() pour s'assurer que l'UI est mise à jour sur le thread principal
+            self.root.after(0, lambda: self._safe_append(thread_name, message))
+        except Exception:
+            pass # L'application est peut-être en train de se fermer
+
+    def _safe_append(self, thread_name, message):
+        if self.log_area:
+            if self.log_area.winfo_exists():
+                try:
+                    logger.debug(f"UI Log inserting: [{thread_name}] {message}")
+                    self.log_area.config(state=tk.NORMAL)
+                    self.log_area.insert(tk.END, f"[{thread_name}] {message}\n")
+                    self.log_area.see(tk.END)
+                    self.root.update_idletasks() # Force le rafraîchissement
+                except tk.TclError as e:
+                    logger.error(f"TclError in _safe_append: {e}")
+            else:
+                logger.error("log_area exists but winfo_exists() is False!")
+        else:
+            logger.error("log_area is None!")
 
     def start_analysis(self):
+        logger.info("Démarrage de l'analyse réseau demandé par l'utilisateur")
         self.btn_analyze.state(['disabled'])
         self.progress.start()
         self.status_var.set("Analyse réseau en cours...")
@@ -414,6 +472,12 @@ class AppUI:
         self.btn_analyze.state(['!disabled'])
         for res in results:
             self.append_log(f"{res['category']} > {res['name']}: {res['status']}")
+            
+        if severity == "OK":
+            self.append_log("✅ Tous les tests réseau sont corrects. Aucun problème détecté.")
+        else:
+            self.append_log(f"⚠️ Des problèmes ont été détectés (Sévérité : {severity}).")
+            
         self.status_var.set(f"Analyse terminée ({severity})")
         if severity != "OK": self.btn_repair.state(['!disabled'])
 
@@ -464,22 +528,110 @@ class AppUI:
         threading.Thread(target=self.run_benchmark, args=(drive,), daemon=True).start()
 
     def run_benchmark(self, drive):
+        hw_info = self.benchmark_engine.get_drive_hw_info(drive)
         results = self.benchmark_engine.run_speed_test(drive)
-        self.root.after(0, lambda: self.finish_benchmark(results))
+        self.root.after(0, lambda: self.finish_benchmark(results, hw_info))
 
-    def finish_benchmark(self, results):
+    def finish_benchmark(self, results, hw_info):
         self.progress.stop()
         self.btn_benchmark.state(['!disabled'])
         if results:
-            self.lbl_bench_write.config(text=f"Écriture : {results['write']:.2f} MB/s")
-            self.lbl_bench_read.config(text=f"Lecture : {results['read']:.2f} MB/s")
             analysis = self.benchmark_engine.get_standard_comparison(results)
-            self.lbl_bench_comp.config(text=f"Catégorie détectée : {analysis['cat']}")
-            self.lbl_bench_desc.config(text=analysis['desc'])
-            self.append_log(f"Benchmark terminé. Résultat: {analysis['cat']}")
+            import datetime
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            entry = {
+                "date": now,
+                "lecteur": self.drive_var.get().split()[0],
+                "modele": hw_info.get("model", "Inconnu"),
+                "media": hw_info.get("media", "Inconnu"),
+                "bus": hw_info.get("bus", "Inconnu"),
+                "read": results['read'],
+                "write": results['write'],
+                "cat": analysis['cat']
+            }
+            
+            if not hasattr(self, 'bench_history'):
+                self.bench_history = []
+            
+            self.bench_history.insert(0, entry)
+            # Limite à 50
+            if len(self.bench_history) > 50:
+                self.bench_history = self.bench_history[:50]
+                
+            self.save_config()
+            self.refresh_bench_history_ui()
+            
             self.status_var.set("Benchmark terminé")
         else:
             self.status_var.set("Erreur pendant le benchmark")
+
+    def refresh_bench_history_ui(self):
+        if not hasattr(self, 'bench_history'):
+            return
+        
+        for item in self.bench_tree.get_children():
+            self.bench_tree.delete(item)
+            
+        def format_num(val):
+            try:
+                # Convertit en int et formate avec des espaces pour les milliers
+                return f"{int(float(str(val).replace(' ', ''))):,}".replace(",", " ")
+            except (ValueError, TypeError):
+                return str(val)
+                
+        for row in self.bench_history:
+            self.bench_tree.insert("", tk.END, values=(
+                row["date"], 
+                row["lecteur"], 
+                row.get("modele", "Inconnu"),
+                row.get("media", "Inconnu"),
+                row.get("bus", "Inconnu"),
+                format_num(row.get("read", 0)), 
+                format_num(row.get("write", 0)), 
+                row.get("cat", "Inconnu")
+            ))
+
+    def show_bench_context_menu(self, event):
+        item = self.bench_tree.identify_row(event.y)
+        if item:
+            self.bench_tree.selection_set(item)
+            menu = tk.Menu(self.root, tearoff=0)
+            menu.add_command(label="❌ Effacer cette entrée", command=lambda: self.delete_bench_entry(item))
+            menu.post(event.x_root, event.y_root)
+
+    def delete_bench_entry(self, item):
+        values = self.bench_tree.item(item, "values")
+        if not values: return
+        date_val = values[0]
+        lecteur_val = values[1]
+        
+        if hasattr(self, 'bench_history'):
+            # Trouver l'index exact pour éviter de supprimer des doublons parfaits par erreur si plusieurs correspondent, 
+            # mais date + lecteur est généralement unique.
+            self.bench_history = [row for row in self.bench_history if not (row["date"] == date_val and row["lecteur"] == lecteur_val)]
+            self.save_config()
+            self.refresh_bench_history_ui()
+
+    def sort_bench_tree(self, col, reverse):
+        # Récupérer les éléments
+        l = [(self.bench_tree.set(k, col), k) for k in self.bench_tree.get_children('')]
+        
+        # Tentative de conversion numérique pour les colonnes read/write
+        if col in ("read", "write"):
+            try:
+                l.sort(key=lambda t: float(t[0].replace(' ', '')), reverse=reverse)
+            except ValueError:
+                l.sort(reverse=reverse)
+        else:
+            l.sort(reverse=reverse)
+            
+        # Réarranger les items
+        for index, (val, k) in enumerate(l):
+            self.bench_tree.move(k, '', index)
+            
+        # Inverser le prochain tri
+        self.bench_tree.heading(col, command=lambda: self.sort_bench_tree(col, not reverse))
 
     # --- Actions Hardware ---
     def run_hardware_audit(self):
@@ -1369,6 +1521,7 @@ class AppUI:
                     self.saved_tab_order = config.get("tab_order", [])
                     self.is_maximized = config.get("maximized", False)
                     self.hidden_tabs = config.get("hidden_tabs", [])
+                    self.bench_history = config.get("bench_history", [])
                     
                     # Validation Windows Native pour multi-écrans
                     try:
@@ -1475,7 +1628,8 @@ class AppUI:
                 "vault_col_w": self.vault_tree.column("site", "width") if hasattr(self, 'vault_tree') and self.vault_tree.winfo_exists() else getattr(self, 'saved_vault_col_w', 200),
                 "tab_order": [self.notebook.tab(i, "text") for i in range(self.notebook.index("end"))],
                 "maximized": is_max,
-                "hidden_tabs": hidden
+                "hidden_tabs": hidden,
+                "bench_history": getattr(self, 'bench_history', [])
             }
             
             with open(self.config_path, "w") as f:

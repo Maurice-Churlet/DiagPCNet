@@ -6,6 +6,7 @@ import os
 import time
 import shutil
 import platform
+import json
 from utils import run_command, logger
 
 class BenchmarkEngine:
@@ -47,6 +48,27 @@ class BenchmarkEngine:
                         display_name = f"{drive_id} [{label}] - {dtype}" if label else f"{drive_id} - {dtype}"
                         drives.append({"id": drive_id, "display": display_name})
         return drives
+
+    def get_drive_hw_info(self, drive_letter):
+        """Récupère les informations matérielles du disque (Modèle, Type, Bus)"""
+        # Drive letter expected as 'C:'
+        letter = drive_letter.replace(':', '')
+        ps_cmd = f"Get-Partition | Where-Object DriveLetter -eq '{letter}' | Get-Disk | Get-PhysicalDisk | Select-Object MediaType, BusType, Model | ConvertTo-Json"
+        success, out, _ = run_command(f"powershell -Command \"{ps_cmd}\"")
+        if success and out.strip():
+            try:
+                # If multiple disks back a single partition (e.g. Storage Spaces), it might return an array.
+                data = json.loads(out)
+                if isinstance(data, list):
+                    data = data[0]
+                return {
+                    "model": data.get("Model", "Inconnu").strip(),
+                    "media": data.get("MediaType", "Inconnu"),
+                    "bus": data.get("BusType", "Inconnu")
+                }
+            except json.JSONDecodeError:
+                pass
+        return {"model": "Inconnu", "media": "Inconnu", "bus": "Inconnu"}
 
     def run_speed_test(self, drive_path, file_size_mb=100):
         """Effectue un test de vitesse en écriture et lecture."""
