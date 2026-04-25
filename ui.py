@@ -17,7 +17,7 @@ from repair_tools import RepairToolsEngine
 from manager import ManagerEngine
 from vault import VaultEngine
 from scripts_manager import ScriptsEngine
-from utils import logger
+from utils import logger, resource_path
 import ctypes
 import ctypes.wintypes
 import psutil
@@ -822,8 +822,9 @@ class AppUI:
     # --- Système Café (Dons) ---
     def cycle_coffee_message(self):
         try:
-            if os.path.exists("coffee.md"):
-                with open("coffee.md", "r", encoding="utf-8") as f:
+            coffee_file = resource_path("coffee.md")
+            if os.path.exists(coffee_file):
+                with open(coffee_file, "r", encoding="utf-8") as f:
                     lines = [line.strip() for line in f if line.strip()]
                 import random
                 if lines:
@@ -851,8 +852,9 @@ class AppUI:
         ttk.Label(top, text="Pour le prix d'un café ou plus selon votre karma\n(uniquement en BTC)", justify=tk.CENTER).pack(pady=(0, 20))
 
         try:
-            if os.path.exists("QR_BTC.jpg"):
-                img = Image.open("QR_BTC.jpg")
+            qr_file = resource_path("QR_BTC.jpg")
+            if os.path.exists(qr_file):
+                img = Image.open(qr_file)
                 img = img.resize((200, 200), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 lbl_img = ttk.Label(top, image=photo)
@@ -1532,7 +1534,7 @@ class AppUI:
 
     def setup_tray(self):
         try:
-            icon_path = os.path.join(os.path.dirname(__file__), "assets", "icon.png")
+            icon_path = resource_path(os.path.join("assets", "icon.png"))
             image = Image.open(icon_path)
 
             menu = pystray.Menu(
