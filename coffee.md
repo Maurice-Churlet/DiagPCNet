@@ -48,32 +48,32 @@
 👉 Un dev, un café, une idée.  
 👉 Si ça t’aide, ça m’aide aussi.  
 👉 On est deux à faire tourner ce logiciel : toi… et le café.  
-👉 Ce logiciel garde vos souvenirs. Vous pouvez nourrir son créateur ☕  
-👉 Si vos photos comptent… vous savez quoi faire 😉  
-👉 Des souvenirs gratuits. Le café ne l’est pas.  
-👉 Chaque photo sauvée mérite peut-être un café ☕  
-👉 Merci pour vos souvenirs… et peut-être pour un café  
-👉 Vos photos sont organisées. Moi un peu moins sans café.  
-👉 Tri des photos gratuit. Café en option.  
-👉 Moins de chaos dans vos photos, plus de café dans ma vie ☕  
-👉 Ce logiciel range vos photos. Aidez-moi à tenir debout 😄  
-👉 Un clic pour vos photos. Un café pour moi ?  
-👉 Vous venez d’économiser du temps… combien vaut-il ?  
-👉 Si ce logiciel vous simplifie la vie, rendez-lui la pareille.  
-👉 Votre galerie respire. À mon tour ? ☕  
-👉 Un petit geste pour des milliers de souvenirs.  
+👉 Ce logiciel répare votre réseau. Vous pouvez réparer mon manque de café ☕  
+👉 Si votre PC respire mieux... vous savez quoi faire 😉  
+👉 Des diagnostics gratuits. Le café ne l’est pas.  
+👉 Chaque écran bleu évité mérite peut-être un café ☕  
+👉 Merci d'entretenir votre système... et peut-être le développeur  
+👉 Votre Windows est propre. Moi un peu moins sans café.  
+👉 Nettoyage système gratuit. Café en option.  
+👉 Moins de lenteurs sur votre PC, plus de café dans ma tasse ☕  
+👉 Ce logiciel nettoie vos disques. Aidez-moi à tenir debout 😄  
+👉 Un clic pour vos pilotes. Un café pour moi ?  
+👉 Vous venez d’économiser le prix d'un informaticien… combien vaut un café ?  
+👉 Si ce logiciel a sauvé votre Windows, rendez-lui la pareille.  
+👉 Votre processeur respire. À mon tour ? ☕  
+👉 Un petit geste pour des milliers d'erreurs évitées.  
 👉 Ce moment où vous vous dites “ça le mérite”… c’est maintenant.  
-👉 Vos souvenirs sont priceless. Mon café accepte le BTC.  
-👉 Pas de licence. Juste une adresse BTC 👀  
-👉 Proof of Photos → Proof of Coffee ☕  
-👉 Stockez vos souvenirs. Stackez un café.  
-👉 HODL vos photos. Tip si affinité.  
-👉 Chaque don améliore secrètement vos photos (ou pas).  
-👉 Sans café, je remplace vos photos par des chats.  
-👉 Un café = 100 photos mieux organisées (statistique douteuse).  
-👉 Attention : développeur nourri uniquement par gratitude.  
-👉 Donnez… ou vos photos restent comme ça 😈  
-👉 Vous venez d’économiser des heures… un café ? ☕  
-👉 Des milliers de souvenirs organisés. Un café pour le développeur ?  
-👉 ✔ Photos triées — offrir un café ☕  
+👉 Votre registre est propre. Mon café accepte le BTC.  
+👉 Pas d'abonnement. Juste une adresse BTC 👀  
+👉 Proof of Work → Proof of Coffee ☕  
+👉 Poussez vos projets Git. Stackez un café.  
+👉 HODL vos disques durs. Tip si affinité.  
+👉 Chaque don augmente secrètement vos FPS (ou pas).  
+👉 Sans café, je remplace votre fond d'écran par un écran bleu.  
+👉 Un café = 10% de performances en plus (statistique douteuse).  
+👉 Attention : développeur nourri uniquement par le SFC /SCANNOW.  
+👉 Donnez… ou votre ping réseau va exploser 😈  
+👉 Vous venez de sauver un PC… un café ? ☕  
+👉 Des centaines d'erreurs corrigées. Un café pour le créateur ?  
+👉 ✔ Système réparé — offrir un café ☕  
 👉 Si ce logiciel t’a aidé aujourd’hui, c’est le moment le plus simple pour me soutenir.

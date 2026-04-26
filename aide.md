@@ -52,3 +52,15 @@ Automatisez vos tâches répétitives.
 - **Mode PowerShell** : Lance un script dans une fenêtre PowerShell visible.
 - **Mode Caché** : Exécute une commande sans fenêtre.
 - **Mode Copie** : Met instantanément le texte choisi dans votre presse-papiers (utile pour les emails types ou les codes complexes).
+
+## Onglet: Jeux
+**ESPACE DÉTENTE & JEUX RÉTRO**
+Faites une pause pendant que vos diagnostics réseau ou réparations Windows tournent.
+- **Pong** : Jouez à l'un des plus anciens jeux d'arcade ! Déplacez votre raquette (à gauche) avec la molette de la souris ou les flèches haut/bas. Renvoyez la balle pour marquer contre l'ordinateur.
+- **Snake** : Prenez le contrôle d'un serpent. Mangez la cible rouge pour grandir et marquer des points. Utilisez les flèches directionnelles et évitez les murs et votre propre queue.
+
+## Onglet: Paramètres
+**CONFIGURATION DE L'INTERFACE**
+Personnalisez votre expérience avec DiagPcNet.
+- **Visibilité des onglets** : Cochez/décochez les onglets selon vos besoins, les modifications sont appliquées automatiquement.
+- **Sauvegarde** : Les préférences sont conservées pour votre prochaine utilisation.
