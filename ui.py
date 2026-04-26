@@ -23,6 +23,7 @@ import ctypes.wintypes
 import psutil
 import time
 from PIL import Image, ImageTk
+from games import PongGame, SnakeGame
 import pystray
 from pystray import MenuItem as item
 
@@ -158,7 +159,8 @@ class AppUI:
             "🧹 Maintenance": (self.create_maint_tab),
             "⚙️ Gestion": (self.create_manager_tab),
             "🔐 Coffre": (self.create_vault_tab),
-            "📜 Scripts": (self.create_scripts_tab)
+            "📜 Scripts": (self.create_scripts_tab),
+            "🎮 Jeux": (self.create_games_tab)
         }
 
         # Dictionnaire frame_name -> widget (pour show/hide)
@@ -193,6 +195,7 @@ class AppUI:
                 elif "Gestion" in name: self.tab_manager = frame
                 elif "Coffre" in name: self.tab_vault = frame
                 elif "Scripts" in name: self.tab_scripts = frame
+                elif "Jeux" in name: self.tab_games = frame
                 
                 # Appeler la fonction de création
                 self.tab_definitions[name]()
@@ -247,6 +250,7 @@ class AppUI:
             "⚙️ Gestion":      "Programmes & démarrage",
             "🔐 Coffre":       "Coffre fort chiffré",
             "📜 Scripts":      "Lanceur de scripts & presse-papiers",
+            "🎮 Jeux":         "Mini-jeux rétro (Pong, Snake)",
         }
 
         hidden_now = getattr(self, 'hidden_tabs', [])
@@ -1251,6 +1255,35 @@ class AppUI:
         """Supprime les accents et met en minuscules pour la comparaison."""
         import unicodedata
         return unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode('ascii').lower()
+
+    # --- Actions Jeux ---
+    def create_games_tab(self):
+        h_frame = ttk.Frame(self.tab_games)
+        h_frame.pack(fill=tk.X, pady=(0, 20))
+        ttk.Label(h_frame, text="F1 pour l'aide", foreground="gray", font=("Segoe UI", 8)).pack(side=tk.LEFT)
+        header = ttk.Label(h_frame, text="Espace Détente & Jeux Rétro", style="Header.TLabel")
+        header.pack(side=tk.LEFT, expand=True)
+
+        desc = ttk.Label(self.tab_games, text="Sélectionnez un jeu ci-dessous. Utilisez les flèches du clavier ou la molette de la souris pour jouer !", wraplength=700)
+        desc.pack(pady=10)
+
+        btn_frame = ttk.Frame(self.tab_games)
+        btn_frame.pack(pady=10)
+
+        self.current_game = None
+        self.game_container = ttk.Frame(self.tab_games)
+        self.game_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        def switch_game(game_class):
+            if self.current_game:
+                self.current_game.stop()
+                self.current_game.destroy()
+            self.current_game = game_class(self.game_container)
+            self.current_game.pack(expand=True)
+            self.current_game.start()
+
+        ttk.Button(btn_frame, text="🏓 JOUER À PONG", style="Action.TButton", command=lambda: switch_game(PongGame)).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="🐍 JOUER À SNAKE", style="Action.TButton", command=lambda: switch_game(SnakeGame)).pack(side=tk.LEFT, padx=10)
 
     def create_scripts_tab(self):
         h_frame = ttk.Frame(self.tab_scripts)
