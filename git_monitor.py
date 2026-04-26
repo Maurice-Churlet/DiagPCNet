@@ -40,8 +40,7 @@ class GitMonitorEngine:
         """Récupère les informations détaillées d'un dépôt Git."""
         # Vérifier si un remote origin existe
         remote = self.run_git(path, ["remote", "get-url", "origin"])
-        if not remote:
-            return None
+        has_remote = bool(remote)
 
         name = os.path.basename(path)
         branch = self.run_git(path, ["rev-parse", "--abbrev-ref", "HEAD"])
@@ -54,22 +53,24 @@ class GitMonitorEngine:
         last_commit = self.run_git(path, ["log", "-1", "--format=%cr"])
         
         # Statut de synchronisation (Ahead/Behind)
-        upstream = self.run_git(path, ["rev-parse", "--abbrev-ref", "@{u}"])
-        sync_status = "No Upstream"
-        if upstream:
-            ahead_behind = self.run_git(path, ["rev-list", "--left-right", "--count", "HEAD..."+upstream])
-            if ahead_behind:
-                parts = ahead_behind.split()
-                if len(parts) == 2:
-                    ahead, behind = parts
-                    if ahead == "0" and behind == "0":
-                        sync_status = "Up to date"
-                    elif ahead != "0" and behind == "0":
-                        sync_status = f"↑ Ahead by {ahead}"
-                    elif ahead == "0" and behind != "0":
-                        sync_status = f"↓ Behind by {behind}"
-                    else:
-                        sync_status = f"⇅ Diverged (+{ahead}, -{behind})"
+        sync_status = "Local Only" if not has_remote else "No Upstream"
+        
+        if has_remote:
+            upstream = self.run_git(path, ["rev-parse", "--abbrev-ref", "@{u}"])
+            if upstream:
+                ahead_behind = self.run_git(path, ["rev-list", "--left-right", "--count", "HEAD..."+upstream])
+                if ahead_behind:
+                    parts = ahead_behind.split()
+                    if len(parts) == 2:
+                        ahead, behind = parts
+                        if ahead == "0" and behind == "0":
+                            sync_status = "Up to date"
+                        elif ahead != "0" and behind == "0":
+                            sync_status = f"↑ Ahead by {ahead}"
+                        elif ahead == "0" and behind != "0":
+                            sync_status = f"↓ Behind by {behind}"
+                        else:
+                            sync_status = f"⇅ Diverged (+{ahead}, -{behind})"
 
         # Auteur du dernier commit
         last_author = self.run_git(path, ["log", "-1", "--format=%an"])
@@ -122,3 +123,16 @@ class GitMonitorEngine:
                 repos.append(info)
         
         return repos
+
+    def commit_and_push(self, path, message):
+        """Ajoute tous les fichiers, commit et push vers origin."""
+        # 1. Ajouter les fichiers modifiés
+        self.run_git(path, ["add", "."])
+        # 2. Commit avec le message
+        self.run_git(path, ["commit", "-s", "-m", message])
+        # 3. Push vers la branche courante
+        branch = self.run_git(path, ["rev-parse", "--abbrev-ref", "HEAD"])
+        if branch:
+            res = self.run_git(path, ["push", "origin", branch])
+            return True
+        return False

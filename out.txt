@@ -1,0 +1,1 @@
+['📜 Scripts', '🔐 Coffre', '🐙 Projets Git', '🌐 Réseau', '💾 Stockage', '🔌 Périphériques', '🧹 Maintenance', '⚙️ Gestion', '🛠️ Paramètres']

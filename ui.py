@@ -116,6 +116,7 @@ class AppUI:
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Log Area - Initialisation préventive avant de créer les onglets
+        self.log_areas = {}
         self.log_area = None
         
         self.create_tabs()
@@ -338,15 +339,20 @@ class AppUI:
         self.btn_repair.pack(side=tk.LEFT, padx=10)
         self.btn_repair.state(['disabled'])
 
-        # Console de log intégrée à l'onglet (agrandie jusqu'en dessous des boutons)
+        # Console de log intégrée à l'onglet réseau
         log_frame = ttk.LabelFrame(self.tab_network, text="Journaux d'opérations", padding="5")
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        self.log_area = scrolledtext.ScrolledText(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4")
-        self.log_area.pack(fill=tk.BOTH, expand=True)
+        self.log_area = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4")
+        sb = ttk.Scrollbar(log_frame, orient="vertical", command=self.log_area.yview)
+        self.log_area.configure(yscrollcommand=sb.set)
+        self.log_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.log_areas["network"] = self.log_area
         
         # Message de démarrage (déplacé ici car log_area est maintenant prêt)
-        self.append_log("Application démarrée. Prêt pour l'analyse.")
+        self.append_log("Application démarrée. Prêt pour l'analyse.", target="network")
 
     def create_storage_tab(self):
         h_frame = ttk.Frame(self.tab_storage)
@@ -410,6 +416,18 @@ class AppUI:
         
         self.refresh_bench_history_ui()
 
+        # Console de log intégrée à l'onglet Stockage
+        log_frame = ttk.LabelFrame(self.tab_storage, text="Journaux d'opérations du benchmark", padding="5")
+        log_frame.pack(fill=tk.X, expand=False, padx=10, pady=10)
+        
+        storage_log = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4", height=5)
+        sb = ttk.Scrollbar(log_frame, orient="vertical", command=storage_log.yview)
+        storage_log.configure(yscrollcommand=sb.set)
+        storage_log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.log_areas["storage"] = storage_log
+
         # Chargement asynchrone des disques au démarrage
         self.drive_combo['values'] = ["Chargement des lecteurs..."]
         self.drive_combo.current(0)
@@ -435,27 +453,27 @@ class AppUI:
         self.hardware_info.pack(fill=tk.BOTH, expand=True, pady=10)
 
     # --- Actions Network ---
-    def append_log(self, message):
-        """Ajoute un message aux logs de manière thread-safe."""
-        if not self.log_area:
+    def append_log(self, message, target="network"):
+        """Ajoute un message aux logs de manière thread-safe sur le bon onglet."""
+        area = self.log_areas.get(target, self.log_area)
+        if not area:
             return
             
         thread_name = threading.current_thread().name
         try:
             # Utiliser after() pour s'assurer que l'UI est mise à jour sur le thread principal
-            self.root.after(0, lambda: self._safe_append(thread_name, message))
+            self.root.after(0, lambda: self._safe_append(area, thread_name, message))
         except Exception:
             pass # L'application est peut-être en train de se fermer
 
-    def _safe_append(self, thread_name, message):
-        if self.log_area:
-            if self.log_area.winfo_exists():
+    def _safe_append(self, area, thread_name, message):
+        if area:
+            if area.winfo_exists():
                 try:
                     logger.debug(f"UI Log inserting: [{thread_name}] {message}")
-                    self.log_area.config(state=tk.NORMAL)
-                    self.log_area.insert(tk.END, f"[{thread_name}] {message}\n")
-                    self.log_area.see(tk.END)
-                    self.root.update_idletasks() # Force le rafraîchissement
+                    area.config(state=tk.NORMAL)
+                    area.insert(tk.END, f"[{thread_name}] {message}\n")
+                    area.see(tk.END)
                 except tk.TclError as e:
                     logger.error(f"TclError in _safe_append: {e}")
             else:
@@ -524,14 +542,14 @@ class AppUI:
         self.root.after(0, update_ui)
 
     def start_benchmark(self):
-        drive_str = self.drive_var.get()
-        if not drive_str: return
-        drive = drive_str.split()[0]
-        
+        drive = self.drive_var.get().split()[0]
+        if not drive:
+            return
+
         self.btn_benchmark.state(['disabled'])
         self.progress.start()
-        self.status_var.set(f"Test de vitesse sur {drive}...")
-        self.append_log(f"Benchmark lancé sur {drive} (100 MB de données)...")
+        self.status_var.set(f"Benchmark en cours sur {drive}...")
+        self.append_log(f"Benchmark lancé sur {drive} (100 MB de données)...", target="storage")
         
         threading.Thread(target=self.run_benchmark, args=(drive,), daemon=True).start()
 
@@ -644,7 +662,7 @@ class AppUI:
     # --- Actions Hardware ---
     def run_hardware_audit(self):
         self.hardware_info.delete('1.0', tk.END)
-        self.append_log("Audit matériel lancé...")
+        self.append_log("Audit matériel lancé...", target="hardware")
         def task():
             audit = self.hardware_engine.audit_system()
             text = "--- AUDIT SYSTÈME ---\n\n"
@@ -654,7 +672,7 @@ class AppUI:
         threading.Thread(target=task, daemon=True).start()
 
     def run_usb_list(self):
-        self.append_log("Listing des périphériques USB...")
+        self.append_log("Listing des périphériques USB...", target="hardware")
         def task():
             usb = self.hardware_engine.list_usb_devices()
             text = "--- PÉRIPHÉRIQUES USB ---\n\n" + usb
@@ -662,7 +680,7 @@ class AppUI:
         threading.Thread(target=task, daemon=True).start()
 
     def run_driver_check(self):
-        self.append_log("Vérification des pilotes...")
+        self.append_log("Vérification des pilotes...", target="hardware")
         def task():
             drivers = self.hardware_engine.check_drivers_health()
             text = "--- ÉTAT DES PILOTES ---\n\n" + drivers
@@ -670,7 +688,7 @@ class AppUI:
         threading.Thread(target=task, daemon=True).start()
 
     def run_battery_check(self):
-        self.append_log("Vérification batterie...")
+        self.append_log("Vérification batterie...", target="hardware")
         def task():
             status = self.hardware_engine.check_battery()
             text = "--- ÉTAT BATTERIE ---\n\n" + status
@@ -678,7 +696,7 @@ class AppUI:
         threading.Thread(target=task, daemon=True).start()
 
     def run_update_check(self):
-        self.append_log("Vérification mises à jour Windows...")
+        self.append_log("Vérification mises à jour Windows...", target="hardware")
         def task():
             status = self.hardware_engine.check_windows_updates()
             text = "--- MISES À JOUR WINDOWS ---\n\n" + status
@@ -708,6 +726,9 @@ class AppUI:
         
         self.btn_scan_git = ttk.Button(ctrl_frame, text="SCANNER", command=self.start_git_scan)
         self.btn_scan_git.pack(side=tk.LEFT, padx=5)
+
+        self.btn_update_all_git = ttk.Button(ctrl_frame, text="TOUT METTRE À JOUR", command=self.update_all_git_repos)
+        self.btn_update_all_git.pack(side=tk.LEFT, padx=5)
         
         # Alerte si Git manque
         self.lbl_git_warning = ttk.Label(ctrl_frame, text="", foreground="red", font=("Segoe UI", 9, "bold"))
@@ -753,20 +774,22 @@ class AppUI:
         self.git_tree.heading("tag", text="Tag")
         self.git_tree.heading("last_commit", text="Dernière Activité")
 
-        self.git_tree.column("name", width=150)
-        self.git_tree.column("branch", width=100)
-        self.git_tree.column("status", width=100)
-        self.git_tree.column("sync", width=120)
-        self.git_tree.column("author", width=120)
-        self.git_tree.column("commits", width=70, anchor=tk.E)
+        self.git_tree.column("name", width=150, anchor=tk.W)
+        self.git_tree.column("branch", width=100, anchor=tk.CENTER)
+        self.git_tree.column("status", width=100, anchor=tk.CENTER)
+        self.git_tree.column("sync", width=120, anchor=tk.CENTER)
+        self.git_tree.column("author", width=120, anchor=tk.CENTER)
+        self.git_tree.column("commits", width=70, anchor=tk.CENTER)
         self.git_tree.column("tag", width=80, anchor=tk.CENTER)
-        self.git_tree.column("last_commit", width=120)
+        self.git_tree.column("last_commit", width=120, anchor=tk.CENTER)
 
         sb = ttk.Scrollbar(table_frame, orient="vertical", command=self.git_tree.yview)
         self.git_tree.configure(yscrollcommand=sb.set)
         
         self.git_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.git_tree.bind("<Button-3>", self.show_git_context_menu)
 
     def start_git_scan(self):
         base_path = self.git_dir_var.get()
@@ -798,13 +821,56 @@ class AppUI:
     def filter_git_tree(self):
         query = self.git_search_var.get().lower()
         self.git_tree.delete(*self.git_tree.get_children())
-        for r in self.all_repos:
+        for idx, r in enumerate(self.all_repos):
             if query in r["name"].lower() or query in r.get("remote", "").lower() or query in r["branch"].lower() or query in r.get("author", "").lower():
-                self.git_tree.insert("", "end", values=(
+                self.git_tree.insert("", "end", iid=str(idx), values=(
                     r["name"], r["branch"], r["status"], r["sync"], 
                     r.get("author", ""), r.get("total_commits", ""), 
                     r.get("latest_tag", ""), r["last_commit"]
                 ))
+
+    def show_git_context_menu(self, event):
+        item = self.git_tree.identify_row(event.y)
+        if item:
+            self.git_tree.selection_set(item)
+            menu = tk.Menu(self.root, tearoff=0)
+            menu.add_command(label="Mettre à jour (Commit & Push)", command=lambda: self.update_single_repo(int(item)))
+            menu.post(event.x_root, event.y_root)
+
+    def update_single_repo(self, repo_idx):
+        if not hasattr(self, 'all_repos') or repo_idx >= len(self.all_repos):
+            return
+        repo = self.all_repos[repo_idx]
+        if messagebox.askyesno("Confirmation", f"Voulez-vous commit et push les modifications pour {repo['name']} ?"):
+            self.run_git_update([repo])
+
+    def update_all_git_repos(self):
+        if not hasattr(self, 'all_repos') or not self.all_repos:
+            return
+        to_update = [r for r in self.all_repos if "Dirty" in r["status"] or "Ahead" in r["sync"]]
+        if not to_update:
+            messagebox.showinfo("Information", "Aucun dépôt ne nécessite de mise à jour.")
+            return
+        if messagebox.askyesno("Confirmation", f"Voulez-vous commit et push les modifications pour {len(to_update)} dépôts ?"):
+            self.run_git_update(to_update)
+
+    def run_git_update(self, repos):
+        self.btn_scan_git.state(['disabled'])
+        self.btn_update_all_git.state(['disabled'])
+        self.progress.start()
+        
+        def task():
+            from datetime import datetime
+            msg = "Mise à jour par DiagPcNet " + datetime.now().strftime("%y%m%d")
+            for i, repo in enumerate(repos):
+                self.root.after(0, lambda n=repo['name'], curr=i+1, tot=len(repos): self.status_var.set(f"Mise à jour {n} ({curr}/{tot})"))
+                self.git_engine.commit_and_push(repo['path'], msg)
+            
+            # Relancer le scan pour rafraîchir la vue
+            self.root.after(0, self.progress.stop)
+            self.root.after(0, self.start_git_scan)
+            
+        threading.Thread(target=task, daemon=True).start()
 
     # --- Actions Monitoring ---
     def start_monitoring(self):
@@ -891,6 +957,18 @@ class AppUI:
         ttk.Button(repair_frame, text="LANCER SFC (Réparer fichiers)", command=lambda: self.run_long_task(self.repair_tools_engine.run_sfc)).pack(side=tk.LEFT, padx=5)
         ttk.Button(repair_frame, text="LANCER DISM (Image système)", command=lambda: self.run_long_task(self.repair_tools_engine.run_dism)).pack(side=tk.LEFT, padx=5)
 
+        # Console de log intégrée à l'onglet Maintenance
+        log_frame = ttk.LabelFrame(self.tab_maint, text="Journaux d'opérations", padding="5")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        maint_log = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4")
+        sb = ttk.Scrollbar(log_frame, orient="vertical", command=maint_log.yview)
+        maint_log.configure(yscrollcommand=sb.set)
+        maint_log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.log_areas["maint"] = maint_log
+
         # Refresh temp size
         self.root.after(1000, self.update_temp_size)
 
@@ -900,14 +978,14 @@ class AppUI:
 
     def run_system_clean(self):
         if messagebox.askyesno("Confirmation", "Voulez-vous supprimer les fichiers temporaires et vider la corbeille ?"):
-            self.cleaner_engine.clean_system(self.append_log)
+            self.cleaner_engine.clean_system(lambda msg: self.append_log(msg, target="maint"))
             self.update_temp_size()
             messagebox.showinfo("OK", "Nettoyage terminé.")
 
     def run_long_task(self, func):
         self.progress.start()
         def task():
-            func(self.append_log)
+            func(lambda msg: self.append_log(msg, target="maint"))
             self.root.after(0, self.progress.stop)
             self.root.after(0, lambda: messagebox.showinfo("Terminé", "L'opération système est terminée."))
         threading.Thread(target=task, daemon=True).start()
