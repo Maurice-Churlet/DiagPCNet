@@ -1,0 +1,11 @@
+# Exclure les artefacts générés du calcul Linguist GitHub.
+build/** linguist-generated
+dist/** linguist-generated
+__pycache__/** linguist-generated
+
+*.pyc linguist-generated
+*.pyo linguist-generated
+*.pyd linguist-generated
+*.pyz linguist-generated
+*.toc linguist-generated
+*.html linguist-generated

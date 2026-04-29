@@ -41,6 +41,9 @@ DiagPcNet est une application Windows (Python) de diagnostic/reparation orientee
 - Cause reelle du blocage de commit signe identifiee et corrigee: `gpg.ssh.program` pointait vers `ssh.exe` au lieu de `ssh-keygen.exe`, ce qui produisait `Could not resolve hostname sign`.
 - Validation effectuee: creation puis push d'un commit signe apres correction de la config Git globale.
 - Protection supplementaire ajoutee dans l'UI: avant commit/push, l'application detecte la mauvaise config `gpg.ssh.program=ssh.exe` et propose une correction automatique vers `ssh-keygen.exe`.
+- Verification du fichier `C:/Users/mchur/.ssh/allowed_signers`: contenu correct avec une ligne `email + cle publique`; le suffixe/commentaire final n'est pas requis.
+- Nettoyage du logging Git: le fallback non signe apres refus explicite de `--signed` par le serveur n'est plus journalise en warning.
+- Ajout d'un fichier `.gitattributes` pour exclure `build/`, `dist/` et artefacts compiles du calcul GitHub Linguist afin que le depot remonte comme projet Python plutot que HTML/TeX.
 
 ### 2026-04-29 - Initialisation
 - Mise en place des fichiers de passation: endoff.md, handoff.md, passation_checklist.md.

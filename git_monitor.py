@@ -213,7 +213,10 @@ class GitMonitorEngine:
             result["pushed"] = True
             result["fallback_unsigned_push"] = True
             result["success"] = True
-            log("WARNING", "Push non signé utilisé en fallback (serveur possiblement incompatible push signé).")
+            if result["signed_push_unsupported"]:
+                log("INFO", "Push non signé utilisé en fallback apres refus du push signé par le serveur distant.")
+            else:
+                log("WARNING", "Push non signé utilisé en fallback (serveur possiblement incompatible push signé).")
             return result
 
         result["error_step"] = "push"

@@ -17,5 +17,5 @@ Statut global: EN EVOLUTION (lot Git/UI integre, verification statique OK)
 ## Dernier lot valide
 - Date: 2026-04-29
 - Action: evolution onglet Projets Git (tri entetes, console logs 200 lignes, commit/push signes, verification admin)
-- Impact: meilleure auditabilite des erreurs commit/push + comportement admin strict + console logs Git plus lisible + auto-correction d'une mauvaise config SSH de signature
-- Risque ouvert: compatibilite du push signe dependante du serveur distant (fallback non signe journalise). Blocage commit signe corrige via `gpg.ssh.program=ssh-keygen.exe`.
+- Impact: meilleure auditabilite des erreurs commit/push + comportement admin strict + console logs Git plus lisible + auto-correction d'une mauvaise config SSH de signature + meilleur classement GitHub Linguist
+- Risque ouvert: compatibilite du push signe dependante du serveur distant (fallback non signe journalise proprement en info). Blocage commit signe corrige via `gpg.ssh.program=ssh-keygen.exe`.
