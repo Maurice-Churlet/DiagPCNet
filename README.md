@@ -36,3 +36,4 @@ pyinstaller --onefile --noconsole --name "DiagPcNet" --admin main.py
 2. Cliquez sur **Analyser**.
 3. Si des erreurs apparaissent, cliquez sur **Réparer**.
 4. Redémarrez si nécessaire.
+
