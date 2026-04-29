@@ -29,12 +29,22 @@ def main():
     hide_console()
     # Vérification des droits administrateur
     if not is_admin():
-        logger.warning("Droits admin non détectés. Tentative de relance...")
+        logger.warning("Droits admin non détectés. Tentative de relance obligatoire...")
         logger.debug(f"Executable: {sys.executable} | Script: {sys.argv[0]}")
         if run_as_admin():
-            sys.exit()   # Relance réussie → on ferme ce process non-admin
+            sys.exit()   # Relance réussie -> on ferme ce process non-admin
         else:
-            logger.warning("Relance admin échouée. Démarrage en mode dégradé (certaines fonctions peuvent être limitées).")
+            logger.error("Relance admin échouée ou refusée. Fermeture de l'application.")
+            try:
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "DiagPcNet doit être lancé en mode administrateur.\n\nRelancez l'application et acceptez l'élévation UAC.",
+                    "Mode administrateur requis",
+                    0x10
+                )
+            except Exception:
+                pass
+            sys.exit(1)
 
     logger.info("Démarrage de l'application DiagPcNet")
     

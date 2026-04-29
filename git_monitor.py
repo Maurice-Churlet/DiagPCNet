@@ -21,6 +21,11 @@ class GitMonitorEngine:
 
     def run_git(self, path, args):
         """Exécute une commande git et retourne la sortie."""
+        result = self.run_git_detailed(path, args)
+        return result["stdout"].strip()
+
+    def run_git_detailed(self, path, args):
+        """Exécute une commande git et retourne un résultat détaillé."""
         try:
             result = subprocess.run(
                 ["git"] + args,
@@ -32,9 +37,21 @@ class GitMonitorEngine:
                 encoding='utf-8',
                 errors='replace'
             )
-            return result.stdout.strip()
-        except Exception:
-            return ""
+            return {
+                "ok": result.returncode == 0,
+                "returncode": result.returncode,
+                "stdout": (result.stdout or "").strip(),
+                "stderr": (result.stderr or "").strip(),
+                "args": args
+            }
+        except Exception as e:
+            return {
+                "ok": False,
+                "returncode": -1,
+                "stdout": "",
+                "stderr": str(e),
+                "args": args
+            }
 
     def get_repo_info(self, path):
         """Récupère les informations détaillées d'un dépôt Git."""
@@ -124,15 +141,76 @@ class GitMonitorEngine:
         
         return repos
 
-    def commit_and_push(self, path, message):
-        """Ajoute tous les fichiers, commit et push vers origin."""
-        # 1. Ajouter les fichiers modifiés
-        self.run_git(path, ["add", "."])
-        # 2. Commit avec le message
-        self.run_git(path, ["commit", "-s", "-m", message])
-        # 3. Push vers la branche courante
-        branch = self.run_git(path, ["rev-parse", "--abbrev-ref", "HEAD"])
-        if branch:
-            res = self.run_git(path, ["push", "origin", branch])
-            return True
-        return False
+    def commit_and_push(self, path, message, log_callback=None):
+        """Ajoute, commit signé et push signé (avec fallback), avec résultat détaillé."""
+
+        def log(level, msg):
+            if log_callback:
+                log_callback(level, msg)
+
+        result = {
+            "success": False,
+            "repo_path": path,
+            "branch": "",
+            "committed": False,
+            "pushed": False,
+            "signed_push": False,
+            "fallback_unsigned_push": False,
+            "error_step": "",
+            "error_message": ""
+        }
+
+        branch_res = self.run_git_detailed(path, ["rev-parse", "--abbrev-ref", "HEAD"])
+        branch = branch_res["stdout"] if branch_res["ok"] else ""
+        result["branch"] = branch
+        if not branch:
+            result["error_step"] = "branch"
+            result["error_message"] = branch_res["stderr"] or "Impossible de déterminer la branche courante."
+            log("ERROR", f"Branche introuvable: {result['error_message']}")
+            return result
+
+        log("INFO", f"Préparation du dépôt '{os.path.basename(path)}' sur la branche '{branch}'.")
+
+        add_res = self.run_git_detailed(path, ["add", "."])
+        if not add_res["ok"]:
+            result["error_step"] = "add"
+            result["error_message"] = add_res["stderr"] or "Échec git add"
+            log("ERROR", f"git add a échoué: {result['error_message']}")
+            return result
+
+        has_staged_changes = self.run_git_detailed(path, ["diff", "--cached", "--quiet"])["returncode"] == 1
+        if has_staged_changes:
+            commit_res = self.run_git_detailed(path, ["commit", "-S", "-m", message])
+            if not commit_res["ok"]:
+                result["error_step"] = "commit"
+                result["error_message"] = commit_res["stderr"] or commit_res["stdout"] or "Échec commit signé"
+                log("ERROR", f"Commit signé échoué: {result['error_message']}")
+                return result
+            result["committed"] = True
+            log("INFO", "Commit signé créé avec succès.")
+        else:
+            log("INFO", "Aucun changement à commit (index inchangé).")
+
+        push_signed_res = self.run_git_detailed(path, ["push", "--signed", "origin", branch])
+        if push_signed_res["ok"]:
+            result["pushed"] = True
+            result["signed_push"] = True
+            result["success"] = True
+            log("INFO", "Push signé réussi.")
+            return result
+
+        log("WARNING", f"Push signé échoué ({push_signed_res['returncode']}): {push_signed_res['stderr'] or push_signed_res['stdout']}")
+
+        # Fallback pratique: certains serveurs ne prennent pas en charge le push signé.
+        push_fallback_res = self.run_git_detailed(path, ["push", "origin", branch])
+        if push_fallback_res["ok"]:
+            result["pushed"] = True
+            result["fallback_unsigned_push"] = True
+            result["success"] = True
+            log("WARNING", "Push non signé utilisé en fallback (serveur possiblement incompatible push signé).")
+            return result
+
+        result["error_step"] = "push"
+        result["error_message"] = push_fallback_res["stderr"] or push_fallback_res["stdout"] or "Échec push"
+        log("ERROR", f"Push échoué après fallback: {result['error_message']}")
+        return result

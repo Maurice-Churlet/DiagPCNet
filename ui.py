@@ -17,7 +17,7 @@ from repair_tools import RepairToolsEngine
 from manager import ManagerEngine
 from vault import VaultEngine
 from scripts_manager import ScriptsEngine
-from utils import logger, resource_path
+from utils import logger, resource_path, is_admin, run_as_admin
 import ctypes
 import ctypes.wintypes
 import psutil
@@ -52,6 +52,18 @@ class AppUI:
         
         self.all_repos = [] 
         self.is_monitoring = True
+        self.git_sort_states = {}
+        self.git_log_max_lines = 200
+        self.git_col_titles = {
+            "name": "Dépôt",
+            "branch": "Branche",
+            "status": "Statut Local",
+            "sync": "Synchro",
+            "author": "Auteur",
+            "commits": "Commits",
+            "tag": "Tag",
+            "last_commit": "Dernière Activité"
+        }
         
         # Icône de l'application
         try:
@@ -477,6 +489,8 @@ class AppUI:
                     logger.debug(f"UI Log inserting: [{thread_name}] {message}")
                     area.config(state=tk.NORMAL)
                     area.insert(tk.END, f"[{thread_name}] {message}\n")
+                    if area == getattr(self, "git_log_area", None):
+                        self._trim_git_log(area)
                     area.see(tk.END)
                 except tk.TclError as e:
                     logger.error(f"TclError in _safe_append: {e}")
@@ -484,6 +498,51 @@ class AppUI:
                 logger.error("log_area exists but winfo_exists() is False!")
         else:
             logger.error("log_area is None!")
+
+    def _trim_git_log(self, area):
+        """Garde uniquement les N dernières lignes dans la console Git."""
+        try:
+            line_count = int(float(area.index("end-1c").split(".")[0]))
+            overflow = line_count - self.git_log_max_lines
+            if overflow > 0:
+                area.delete("1.0", f"{overflow + 1}.0")
+        except Exception:
+            pass
+
+    def append_git_log(self, message, level="INFO"):
+        self.append_log(f"[{level}] {message}", target="git")
+
+    def clear_git_log(self, _event=None):
+        area = getattr(self, "git_log_area", None)
+        if not area or not area.winfo_exists():
+            return
+        area.config(state=tk.NORMAL)
+        area.delete("1.0", tk.END)
+        area.insert(tk.END, "[UI] [INFO] Console Git effacée (double-clic).\n")
+        area.see(tk.END)
+
+    def ensure_admin_for_git_actions(self):
+        """Vérifie le mode admin et relance l'application si nécessaire."""
+        if is_admin():
+            return True
+
+        self.append_git_log("Droits administrateur absents. Relance admin requise pour commit/push.", "WARNING")
+        answer = messagebox.askyesno(
+            "Mode administrateur requis",
+            "Les opérations commit/push nécessitent les droits administrateur.\n\nRelancer maintenant en mode administrateur ?"
+        )
+        if not answer:
+            self.append_git_log("Relance admin annulée par l'utilisateur.", "WARNING")
+            return False
+
+        if run_as_admin():
+            self.append_git_log("Relance admin lancée. Fermeture de l'instance courante.", "INFO")
+            self.root.after(200, self.root.destroy)
+            return False
+
+        self.append_git_log("Échec de la relance en mode administrateur.", "ERROR")
+        messagebox.showerror("Erreur", "Impossible de relancer l'application en mode administrateur.")
+        return False
 
     def start_analysis(self):
         logger.info("Démarrage de l'analyse réseau demandé par l'utilisateur")
@@ -769,14 +828,14 @@ class AppUI:
         cols = ("name", "branch", "status", "sync", "author", "commits", "tag", "last_commit")
         self.git_tree = ttk.Treeview(table_frame, columns=cols, show="headings")
         
-        self.git_tree.heading("name", text="Dépôt")
-        self.git_tree.heading("branch", text="Branche")
-        self.git_tree.heading("status", text="Statut Local")
-        self.git_tree.heading("sync", text="Synchro")
-        self.git_tree.heading("author", text="Auteur")
-        self.git_tree.heading("commits", text="Commits")
-        self.git_tree.heading("tag", text="Tag")
-        self.git_tree.heading("last_commit", text="Dernière Activité")
+        self.git_tree.heading("name", text="Dépôt", command=lambda c="name": self.sort_git_tree(c))
+        self.git_tree.heading("branch", text="Branche", command=lambda c="branch": self.sort_git_tree(c))
+        self.git_tree.heading("status", text="Statut Local", command=lambda c="status": self.sort_git_tree(c))
+        self.git_tree.heading("sync", text="Synchro", command=lambda c="sync": self.sort_git_tree(c))
+        self.git_tree.heading("author", text="Auteur", command=lambda c="author": self.sort_git_tree(c))
+        self.git_tree.heading("commits", text="Commits", command=lambda c="commits": self.sort_git_tree(c))
+        self.git_tree.heading("tag", text="Tag", command=lambda c="tag": self.sort_git_tree(c))
+        self.git_tree.heading("last_commit", text="Dernière Activité", command=lambda c="last_commit": self.sort_git_tree(c))
 
         self.git_tree.column("name", width=150, anchor=tk.W)
         self.git_tree.column("branch", width=100, anchor=tk.CENTER)
@@ -795,11 +854,58 @@ class AppUI:
 
         self.git_tree.bind("<Button-3>", self.show_git_context_menu)
 
+        # Console de logs Git (limitée à 200 lignes)
+        log_frame = ttk.LabelFrame(self.tab_git, text="Journaux gestion commit/push (double-clic pour effacer)", padding="5")
+        log_frame.pack(fill=tk.X, expand=False, padx=10, pady=(0, 10))
+
+        self.git_log_area = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4", height=8)
+        git_log_sb = ttk.Scrollbar(log_frame, orient="vertical", command=self.git_log_area.yview)
+        self.git_log_area.configure(yscrollcommand=git_log_sb.set)
+        self.git_log_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        git_log_sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.git_log_area.bind("<Double-Button-1>", self.clear_git_log)
+        self.log_areas["git"] = self.git_log_area
+        self.append_git_log("Console Git prête. Les logs commit/push apparaîtront ici.")
+
+    def sort_git_tree(self, col):
+        """Tri par clic sur l'entête de colonne."""
+        reverse = not self.git_sort_states.get(col, False)
+        self.git_sort_states[col] = reverse
+
+        rows = []
+        for item_id in self.git_tree.get_children(""):
+            value = self.git_tree.set(item_id, col)
+            rows.append((item_id, value))
+
+        if col == "commits":
+            def key_func(item):
+                try:
+                    return int(str(item[1]).strip())
+                except Exception:
+                    return -1
+        else:
+            def key_func(item):
+                return str(item[1]).casefold()
+
+        rows.sort(key=key_func, reverse=reverse)
+
+        for idx, (item_id, _) in enumerate(rows):
+            self.git_tree.move(item_id, "", idx)
+
+        for c, title in self.git_col_titles.items():
+            suffix = ""
+            if c == col:
+                suffix = " ▼" if reverse else " ▲"
+            self.git_tree.heading(c, text=f"{title}{suffix}", command=lambda c=c: self.sort_git_tree(c))
+
     def start_git_scan(self):
         base_path = self.git_dir_var.get()
         if not os.path.exists(base_path):
             messagebox.showerror("Erreur", "Le dossier n'existe pas.")
             return
+
+        self.append_git_log(f"Scan des dépôts Git dans '{base_path}'.")
 
         self.btn_scan_git.state(['disabled'])
         self.git_tree.delete(*self.git_tree.get_children())
@@ -821,6 +927,7 @@ class AppUI:
         self.all_repos = repos
         self.filter_git_tree()
         self.status_var.set(f"Scan terminé. {len(repos)} dépôts trouvés.")
+        self.append_git_log(f"Scan terminé: {len(repos)} dépôt(s) détecté(s).")
 
     def filter_git_tree(self):
         query = self.git_search_var.get().lower()
@@ -859,19 +966,43 @@ class AppUI:
             self.run_git_update(to_update)
 
     def run_git_update(self, repos):
+        if not self.ensure_admin_for_git_actions():
+            return
+
         self.btn_scan_git.state(['disabled'])
         self.btn_update_all_git.state(['disabled'])
         self.progress.start()
+        self.append_git_log(f"Démarrage de la gestion commit/push pour {len(repos)} dépôt(s).")
         
         def task():
             from datetime import datetime
             msg = "Mise à jour par DiagPcNet " + datetime.now().strftime("%y%m%d")
+            ok_count = 0
+            fail_count = 0
+
+            def log_cb(level, message):
+                self.root.after(0, lambda l=level, m=message: self.append_git_log(m, l))
+
             for i, repo in enumerate(repos):
                 self.root.after(0, lambda n=repo['name'], curr=i+1, tot=len(repos): self.status_var.set(f"Mise à jour {n} ({curr}/{tot})"))
-                self.git_engine.commit_and_push(repo['path'], msg)
+                self.root.after(0, lambda n=repo['name']: self.append_git_log(f"Traitement dépôt: {n}"))
+                update_result = self.git_engine.commit_and_push(repo['path'], msg, log_callback=log_cb)
+                if update_result.get("success"):
+                    ok_count += 1
+                    self.root.after(0, lambda n=repo['name']: self.append_git_log(f"Succès pour {n}.", "INFO"))
+                    if update_result.get("fallback_unsigned_push"):
+                        self.root.after(0, lambda n=repo['name']: self.append_git_log(f"{n}: push non signé utilisé en fallback.", "WARNING"))
+                else:
+                    fail_count += 1
+                    step = update_result.get("error_step", "inconnu")
+                    err = update_result.get("error_message", "Erreur non détaillée")
+                    self.root.after(0, lambda n=repo['name'], s=step, e=err: self.append_git_log(f"Échec {n} à l'étape {s}: {e}", "ERROR"))
             
             # Relancer le scan pour rafraîchir la vue
             self.root.after(0, self.progress.stop)
+            self.root.after(0, lambda: self.append_git_log(f"Gestion commit/push terminée: {ok_count} succès, {fail_count} échec(s)."))
+            self.root.after(0, lambda: self.btn_scan_git.state(['!disabled']))
+            self.root.after(0, lambda: self.btn_update_all_git.state(['!disabled']))
             self.root.after(0, self.start_git_scan)
             
         threading.Thread(target=task, daemon=True).start()
