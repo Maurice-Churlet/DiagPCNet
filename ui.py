@@ -523,6 +523,7 @@ class AppUI:
 
     def ensure_admin_for_git_actions(self):
         """Vérifie le mode admin et relance l'application si nécessaire."""
+        self.update_git_admin_mode_badge()
         if is_admin():
             return True
 
@@ -543,6 +544,16 @@ class AppUI:
         self.append_git_log("Échec de la relance en mode administrateur.", "ERROR")
         messagebox.showerror("Erreur", "Impossible de relancer l'application en mode administrateur.")
         return False
+
+    def update_git_admin_mode_badge(self):
+        """Met à jour l'indicateur visuel du mode admin sur l'onglet Git."""
+        lbl = getattr(self, "lbl_git_admin_mode", None)
+        if not lbl:
+            return
+        if is_admin():
+            lbl.config(text="(Admin)", foreground="#1b8f3a")
+        else:
+            lbl.config(text="(Non admin)", foreground="#b3261e")
 
     def start_analysis(self):
         logger.info("Démarrage de l'analyse réseau demandé par l'utilisateur")
@@ -776,8 +787,19 @@ class AppUI:
         h_frame = ttk.Frame(self.tab_git)
         h_frame.pack(fill=tk.X, pady=(0, 20))
         ttk.Label(h_frame, text="F1 pour l'aide", foreground="gray", font=("Segoe UI", 8)).pack(side=tk.LEFT)
-        header = ttk.Label(h_frame, text="Moniteur de Projets Git", style="Header.TLabel")
-        header.pack(side=tk.LEFT, expand=True)
+
+        # Zone centrale pour conserver le titre centré comme avant.
+        center_holder = ttk.Frame(h_frame)
+        center_holder.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        title_frame = ttk.Frame(center_holder)
+        title_frame.pack(anchor="center")
+
+        header = ttk.Label(title_frame, text="Moniteur de Projets Git", style="Header.TLabel")
+        header.pack(side=tk.LEFT)
+        self.lbl_git_admin_mode = ttk.Label(title_frame, text="", font=("Segoe UI", 10, "bold"))
+        self.lbl_git_admin_mode.pack(side=tk.LEFT, padx=(8, 0))
+        self.update_git_admin_mode_badge()
 
         # Controls
         ctrl_frame = ttk.Frame(self.tab_git)
