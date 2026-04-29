@@ -5,6 +5,7 @@
 import tkinter as tk
 import os
 import json
+import subprocess
 from tkinter import ttk, messagebox, scrolledtext
 import threading
 from diagnostic import DiagnosticEngine
@@ -545,6 +546,93 @@ class AppUI:
         messagebox.showerror("Erreur", "Impossible de relancer l'application en mode administrateur.")
         return False
 
+    def _git_config_get(self, key):
+        try:
+            result = subprocess.run(
+                ["git", "config", "--get", key],
+                capture_output=True,
+                text=True,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                encoding='utf-8',
+                errors='replace'
+            )
+            if result.returncode == 0:
+                return (result.stdout or "").strip()
+        except Exception as exc:
+            self.append_git_log(f"Lecture config Git impossible pour {key}: {exc}", "WARNING")
+        return ""
+
+    def _git_config_set_global(self, key, value):
+        try:
+            result = subprocess.run(
+                ["git", "config", "--global", key, value],
+                capture_output=True,
+                text=True,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+                encoding='utf-8',
+                errors='replace'
+            )
+            return result.returncode == 0, (result.stderr or result.stdout or "").strip()
+        except Exception as exc:
+            return False, str(exc)
+
+    def ensure_git_signing_ready(self):
+        """Contrôle la configuration Git SSH signature et corrige le cas connu ssh.exe/ssh-keygen.exe."""
+        gpg_format = self._git_config_get("gpg.format")
+        if gpg_format and gpg_format.lower() != "ssh":
+            self.append_git_log(f"Signature Git configurée en mode '{gpg_format}'. Aucun correctif SSH automatique appliqué.", "INFO")
+            return True
+
+        signing_key = self._git_config_get("user.signingkey")
+        if signing_key and not os.path.exists(signing_key):
+            self.append_git_log(f"Clé de signature introuvable: {signing_key}", "ERROR")
+            messagebox.showerror("Signature Git", f"La clé de signature configurée est introuvable:\n\n{signing_key}")
+            return False
+
+        configured_program = self._git_config_get("gpg.ssh.program")
+        expected_program = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "System32", "OpenSSH", "ssh-keygen.exe")
+        expected_program = expected_program.replace("\\", "/")
+
+        if configured_program:
+            normalized_program = configured_program.replace("\\", "/").lower()
+            if normalized_program.endswith("/ssh-keygen.exe") and os.path.exists(configured_program):
+                return True
+
+            if normalized_program.endswith("/ssh.exe"):
+                self.append_git_log("Configuration Git détectée: gpg.ssh.program pointe vers ssh.exe, ce qui casse les commits signés.", "WARNING")
+                if not os.path.exists(expected_program):
+                    self.append_git_log(f"Correction impossible: ssh-keygen.exe introuvable à {expected_program}", "ERROR")
+                    messagebox.showerror("Signature Git", f"ssh-keygen.exe est introuvable:\n\n{expected_program}")
+                    return False
+
+                if not messagebox.askyesno(
+                    "Corriger la signature Git",
+                    "La configuration Git de signature SSH est incorrecte.\n\n"
+                    f"Actuel: {configured_program}\n"
+                    f"Attendu: {expected_program}\n\n"
+                    "Appliquer automatiquement la correction globale ?"
+                ):
+                    self.append_git_log("Correction automatique de gpg.ssh.program refusée.", "WARNING")
+                    return False
+
+                ok, detail = self._git_config_set_global("gpg.ssh.program", expected_program)
+                if ok:
+                    self.append_git_log(f"Correction appliquée: gpg.ssh.program={expected_program}", "INFO")
+                    return True
+
+                self.append_git_log(f"Échec correction gpg.ssh.program: {detail}", "ERROR")
+                messagebox.showerror("Signature Git", f"Impossible de corriger gpg.ssh.program:\n\n{detail}")
+                return False
+
+            if not os.path.exists(configured_program):
+                self.append_git_log(f"Programme de signature SSH introuvable: {configured_program}", "ERROR")
+                messagebox.showerror("Signature Git", f"Le programme de signature SSH configuré est introuvable:\n\n{configured_program}")
+                return False
+
+        return True
+
     def update_git_admin_mode_badge(self):
         """Met à jour l'indicateur visuel du mode admin sur l'onglet Git."""
         lbl = getattr(self, "lbl_git_admin_mode", None)
@@ -989,6 +1077,8 @@ class AppUI:
 
     def run_git_update(self, repos):
         if not self.ensure_admin_for_git_actions():
+            return
+        if not self.ensure_git_signing_ready():
             return
 
         self.btn_scan_git.state(['disabled'])

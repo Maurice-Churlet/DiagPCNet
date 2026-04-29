@@ -38,6 +38,9 @@ DiagPcNet est une application Windows (Python) de diagnostic/reparation orientee
 - Cas "serveur ne supporte pas --signed push" reclasse en information non critique (plus un faux bruit d'erreur).
 - Verification admin renforcee avant action commit/push dans l'UI, avec tentative de relance admin.
 - Verification admin stricte au demarrage dans `main.py`: fermeture si elevation impossible/refusee.
+- Cause reelle du blocage de commit signe identifiee et corrigee: `gpg.ssh.program` pointait vers `ssh.exe` au lieu de `ssh-keygen.exe`, ce qui produisait `Could not resolve hostname sign`.
+- Validation effectuee: creation puis push d'un commit signe apres correction de la config Git globale.
+- Protection supplementaire ajoutee dans l'UI: avant commit/push, l'application detecte la mauvaise config `gpg.ssh.program=ssh.exe` et propose une correction automatique vers `ssh-keygen.exe`.
 
 ### 2026-04-29 - Initialisation
 - Mise en place des fichiers de passation: endoff.md, handoff.md, passation_checklist.md.
@@ -55,6 +58,7 @@ DiagPcNet est une application Windows (Python) de diagnostic/reparation orientee
 ## 9) Tests executes sur ce lot
 - Verification statique: aucune erreur detectee sur `ui.py`, `git_monitor.py`, `main.py`.
 - Verification runtime non effectuee ici (GUI non jouee pas a pas dans ce lot).
+- Verification signature Git: commit signe local valide apres correction de `gpg.ssh.program`, push reussi vers `origin/main`.
 
 ## 8) Prochaines actions candidates
 - Maintenir ce journal a chaque lot de modifications.
