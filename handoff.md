@@ -30,10 +30,12 @@ DiagPcNet est une application Windows (Python) de diagnostic/reparation orientee
 ### 2026-04-29 - Onglet Projets Git (tri, logs, signatures, admin)
 - Ajout du tri par clic sur les entetes de colonnes du tableau Git.
 - Ajout d'une console de logs Git sous le tableau, limitee a 200 lignes.
+- Hauteur de la console Git augmentee (x2) pour une meilleure lisibilite.
 - Double-clic dans la console Git pour effacer les logs.
 - Ajout de logs applicatifs cibles pour la gestion commit/push (etapes, succes, erreurs exploitables).
 - Commit passe en signature cryptographique (`git commit -S`) au lieu du simple signoff (`-s`).
 - Push tente en mode signe (`git push --signed`), puis fallback non signe documente si non supporte cote serveur.
+- Cas "serveur ne supporte pas --signed push" reclasse en information non critique (plus un faux bruit d'erreur).
 - Verification admin renforcee avant action commit/push dans l'UI, avec tentative de relance admin.
 - Verification admin stricte au demarrage dans `main.py`: fermeture si elevation impossible/refusee.
 

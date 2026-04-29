@@ -155,6 +155,7 @@ class GitMonitorEngine:
             "committed": False,
             "pushed": False,
             "signed_push": False,
+            "signed_push_unsupported": False,
             "fallback_unsigned_push": False,
             "error_step": "",
             "error_message": ""
@@ -199,7 +200,12 @@ class GitMonitorEngine:
             log("INFO", "Push signé réussi.")
             return result
 
-        log("WARNING", f"Push signé échoué ({push_signed_res['returncode']}): {push_signed_res['stderr'] or push_signed_res['stdout']}")
+        signed_push_error = (push_signed_res["stderr"] or push_signed_res["stdout"] or "").lower()
+        if "does not support --signed push".lower() in signed_push_error:
+            result["signed_push_unsupported"] = True
+            log("INFO", "Serveur distant incompatible avec le push signé (--signed). Passage en fallback non signé.")
+        else:
+            log("WARNING", f"Push signé échoué ({push_signed_res['returncode']}): {push_signed_res['stderr'] or push_signed_res['stdout']}")
 
         # Fallback pratique: certains serveurs ne prennent pas en charge le push signé.
         push_fallback_res = self.run_git_detailed(path, ["push", "origin", branch])

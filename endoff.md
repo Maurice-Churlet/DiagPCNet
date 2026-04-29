@@ -17,5 +17,5 @@ Statut global: EN EVOLUTION (lot Git/UI integre, verification statique OK)
 ## Dernier lot valide
 - Date: 2026-04-29
 - Action: evolution onglet Projets Git (tri entetes, console logs 200 lignes, commit/push signes, verification admin)
-- Impact: meilleure auditabilite des erreurs commit/push + comportement admin strict
+- Impact: meilleure auditabilite des erreurs commit/push + comportement admin strict + console logs Git plus lisible
 - Risque ouvert: compatibilite du push signe dependante du serveur distant (fallback non signe journalise)

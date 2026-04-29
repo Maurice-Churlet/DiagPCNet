@@ -880,7 +880,7 @@ class AppUI:
         log_frame = ttk.LabelFrame(self.tab_git, text="Journaux gestion commit/push (double-clic pour effacer)", padding="5")
         log_frame.pack(fill=tk.X, expand=False, padx=10, pady=(0, 10))
 
-        self.git_log_area = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4", height=8)
+        self.git_log_area = tk.Text(log_frame, font=("Consolas", 10), bg="#1e1e1e", fg="#d4d4d4", height=16)
         git_log_sb = ttk.Scrollbar(log_frame, orient="vertical", command=self.git_log_area.yview)
         self.git_log_area.configure(yscrollcommand=git_log_sb.set)
         self.git_log_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -1013,7 +1013,13 @@ class AppUI:
                     ok_count += 1
                     self.root.after(0, lambda n=repo['name']: self.append_git_log(f"Succès pour {n}.", "INFO"))
                     if update_result.get("fallback_unsigned_push"):
-                        self.root.after(0, lambda n=repo['name']: self.append_git_log(f"{n}: push non signé utilisé en fallback.", "WARNING"))
+                        level = "INFO" if update_result.get("signed_push_unsupported") else "WARNING"
+                        msg = (
+                            f"{repo['name']}: push signé non supporté par le serveur, fallback non signé utilisé."
+                            if update_result.get("signed_push_unsupported")
+                            else f"{repo['name']}: push non signé utilisé en fallback."
+                        )
+                        self.root.after(0, lambda m=msg, l=level: self.append_git_log(m, l))
                 else:
                     fail_count += 1
                     step = update_result.get("error_step", "inconnu")
