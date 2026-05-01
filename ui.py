@@ -1348,6 +1348,12 @@ class AppUI:
         # Validation par Entrée
         entry.bind("<Return>", lambda e: try_login())
 
+        # Bouton RAZ — affiché uniquement après un échec
+        btn_reset = ttk.Button(self.vault_frame, text="Mot de passe oublié — Réinitialiser le coffre",
+                               command=self._vault_reset_confirm)
+        lbl_error = ttk.Label(self.vault_frame, text="", foreground="red")
+        lbl_error.pack()
+
         def try_login():
             pwd = pwd_var.get()
             data, is_real = self.vault_engine.unlock(pwd)
@@ -1355,9 +1361,22 @@ class AppUI:
                 self.current_vault_pwd = pwd # Stockage temporaire pour la session
                 self.show_vault_content(data, is_real)
             else:
-                messagebox.showerror("Erreur", "Mot de passe incorrect")
+                lbl_error.config(text="Mot de passe incorrect.")
+                btn_reset.pack(pady=(4, 0))
         
         ttk.Button(self.vault_frame, text="DÉVERROUILLER", command=try_login).pack()
+
+    def _vault_reset_confirm(self):
+        ok = messagebox.askyesno(
+            "Réinitialiser le coffre",
+            "⚠️  Cette action supprime définitivement toutes les données du coffre.\n\n"
+            "Vous devrez reconfigurer un nouveau mot de passe.\n\n"
+            "Confirmer la réinitialisation ?",
+            icon="warning"
+        )
+        if ok:
+            self.vault_engine.reset_vault()
+            self.show_vault_init()
 
     def show_vault_content(self, data, is_real):
         # Sauvegarder la largeur actuelle avant de rafraîchir

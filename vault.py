@@ -65,6 +65,11 @@ class VaultEngine:
     def is_initialized(self):
         return os.path.exists(self.config_path)
 
+    def reset_vault(self):
+        """Supprime le fichier coffre. Irréversible."""
+        if os.path.exists(self.config_path):
+            os.remove(self.config_path)
+
     def update_blob(self, password, new_data, is_real):
         """Met à jour uniquement l'un des deux blobs sans avoir besoin de l'autre mot de passe."""
         if not os.path.exists(self.config_path): return False

@@ -1,4 +1,4 @@
-('C:\\Dev\\DiagPcNet\\build\\diagpcnet\\PYZ-00.pyz',
+('C:\\Dev\\DiagPcNet\\build\\DiagPcNet\\PYZ-00.pyz',
  [('PIL',
    'C:\\Dev\\DiagPcNet\\venv\\Lib\\site-packages\\PIL\\__init__.py',
    'PYMODULE'),
