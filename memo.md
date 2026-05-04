@@ -15,7 +15,7 @@ Compilation
 Générer l'exécutable Windows :
 
 PowerShell
-pyinstaller PhotoSelect.spec
+pyinstaller diagpcnet.spec
 2. Configuration de la Signature SSH
 À configurer une seule fois pour permettre la validation locale des signatures.
 
